@@ -10,6 +10,11 @@ from .buffer import ReplayBuffer
 
 
 Batch = namedtuple('Batch', 'trajectories conditions')
+
+## begin modified (added line)
+BatchV2 = namedtuple('BatchV2', 'actions states')
+## end modified
+
 ValueBatch = namedtuple('ValueBatch', 'trajectories conditions values')
 
 
@@ -82,12 +87,19 @@ class SequenceDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx, eps=1e-4):
         path_ind, start, end = self.indices[idx]
 
+
         observations = self.fields.normed_observations[path_ind, start:end]
         actions = self.fields.normed_actions[path_ind, start:end]
 
+        """
+        begin modified 
         conditions = self.get_conditions(observations)
         trajectories = np.concatenate([actions, observations], axis=-1)
         batch = Batch(trajectories, conditions)
+        return batch
+        """
+        ## begin modifed (added lines)
+        batch = BatchV2(actions, observations[:,0]) # take only the first observation of the trajectory
         return batch
 
 

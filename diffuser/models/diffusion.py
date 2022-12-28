@@ -50,7 +50,11 @@ class GaussianDiffusion(nn.Module):
         self.horizon = horizon
         self.observation_dim = observation_dim
         self.action_dim = action_dim
-        self.transition_dim = observation_dim + action_dim
+
+        #begin modified: self.transition_dim = observation_dim + action_dim
+        self.transition_dim =   action_dim
+        #end modified
+
         self.model = model
 
         betas = cosine_beta_schedule(n_timesteps)
@@ -155,22 +159,27 @@ class GaussianDiffusion(nn.Module):
                 x_start=x_recon, x_t=x, t=t)
         return model_mean, posterior_variance, posterior_log_variance
 
+    # begin modified: remove argument 'cond' of the function p_sample_loop
     @torch.no_grad()
     def p_sample_loop(self, shape, cond, verbose=True, return_chain=False, sample_fn=default_sample_fn, **sample_kwargs):
         device = self.betas.device
 
         batch_size = shape[0]
         x = torch.randn(shape, device=device)
-        x = apply_conditioning(x, cond, self.action_dim)
 
+        ## begin modified (deleted line)
+        #x = apply_conditioning(x, cond, self.action_dim)
+        ## end modfied
         chain = [x] if return_chain else None
 
         progress = utils.Progress(self.n_timesteps) if verbose else utils.Silent()
         for i in reversed(range(0, self.n_timesteps)):
             t = make_timesteps(batch_size, i, device)
             x, values = sample_fn(self, x, cond, t, **sample_kwargs)
-            x = apply_conditioning(x, cond, self.action_dim)
 
+            ## begin modified (deleted line)
+            #x = apply_conditioning(x, cond, self.action_dim)
+            ## end modfied
             progress.update({'t': i, 'vmin': values.min().item(), 'vmax': values.max().item()})
             if return_chain: chain.append(x)
 
@@ -180,17 +189,18 @@ class GaussianDiffusion(nn.Module):
         if return_chain: chain = torch.stack(chain, dim=1)
         return Sample(x, values, chain)
 
+    # modified: replace the input 'cond' by 'obs' (obs=s_0 -> firt state of the trajectory \tau=[s_0,a_0,..,s_T,a_T])
     @torch.no_grad()
-    def conditional_sample(self, cond, horizon=None, **sample_kwargs):
+    def conditional_sample(self, obs, horizon=None, **sample_kwargs):
         '''
             conditions : [ (time, state), ... ]
         '''
         device = self.betas.device
-        batch_size = len(cond[0])
+        batch_size = len(obs[0]) # modified: batch_size = len(cond[0]) 
         horizon = horizon or self.horizon
         shape = (batch_size, horizon, self.transition_dim)
 
-        return self.p_sample_loop(shape, cond, **sample_kwargs)
+        return self.p_sample_loop(shape, obs, **sample_kwargs)
 
     #------------------------------------------ training ------------------------------------------#
 
@@ -205,15 +215,20 @@ class GaussianDiffusion(nn.Module):
 
         return sample
 
-    def p_losses(self, x_start, cond, t):
+    # modified: replace the input 'cond' by 'obs' (obs=s_0 -> firt state of the trajectory \tau=[s_0,a_0,..,s_T,])
+    def p_losses(self, x_start, obs, t):
         noise = torch.randn_like(x_start)
 
         x_noisy = self.q_sample(x_start=x_start, t=t, noise=noise)
-        x_noisy = apply_conditioning(x_noisy, cond, self.action_dim)
 
-        x_recon = self.model(x_noisy, cond, t)
-        x_recon = apply_conditioning(x_recon, cond, self.action_dim)
+        ## begin modified (deleted line)
+        #x_noisy = apply_conditioning(x_noisy, cond, self.action_dim)
+        ## end modfied
 
+        x_recon = self.model(x_noisy, obs, t)
+        ## begin modified (deleted line)
+        #x_recon = apply_conditioning(x_recon, cond, self.action_dim)
+        ## end modfied
         assert noise.shape == x_recon.shape
 
         if self.predict_epsilon:

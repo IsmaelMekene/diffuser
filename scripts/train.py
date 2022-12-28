@@ -48,7 +48,10 @@ model_config = utils.Config(
     args.model,
     savepath=(args.savepath, 'model_config.pkl'),
     horizon=args.horizon,
-    transition_dim=observation_dim + action_dim,
+    ## begin modified (changing transition dim to make it equal to action_dim)
+    #transition_dim=observation_dim + action_dim,
+    transition_dim=observation_dim
+    ## enf added
     cond_dim=observation_dim,
     dim_mults=args.dim_mults,
     attention=args.attention,
@@ -92,12 +95,12 @@ trainer_config = utils.Config(
 #-------------------------------- instantiate --------------------------------#
 #-----------------------------------------------------------------------------#
 
+
 model = model_config()
 
 diffusion = diffusion_config(model)
 
 trainer = trainer_config(diffusion, dataset, renderer)
-
 
 #-----------------------------------------------------------------------------#
 #------------------------ test forward & backward pass -----------------------#

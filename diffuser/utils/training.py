@@ -128,8 +128,9 @@ class Trainer(object):
             if self.step == 0 and self.sample_freq:
                 self.render_reference(self.n_reference)
 
-            if self.sample_freq and self.step % self.sample_freq == 0:
-                self.render_samples()
+            # modified: remove 2 lines (no need to render frequence)
+            #if self.sample_freq and self.step % self.sample_freq == 0:
+            #    self.render_samples()
 
             self.step += 1
 
