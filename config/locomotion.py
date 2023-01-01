@@ -61,6 +61,10 @@ base = {
         'bucket': None,
         'device': 'cuda',
         'seed': None,
+
+        ## resume training
+        'diffusion_epoch': 'latest',
+        'diffusion_loadpath': 'f:diffusion/defaults_H{horizon}_T{n_diffusion_steps}',
     },
 
     'values': {
@@ -103,7 +107,7 @@ base = {
         'n_reference': 8,
         'bucket': None,
         'device': 'cuda',
-        'seed': None,
+        'seed': None,        
     },
 
     'plan': {

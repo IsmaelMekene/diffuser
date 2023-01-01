@@ -13,7 +13,7 @@ DATASETS = [
 	for buffer in ['medium-replay', 'medium', 'medium-expert']
 ]
 
-LOGBASE = 'logs/pretrained/'
+LOGBASE = '/content/Drive/MyDrive/project_recvis_diffuser/diffuserV2/diffuser/logs' #'logs/pretrained/'
 TRIAL = '*'
 EXP_NAME = 'plans*/*'
 verbose = False

@@ -99,7 +99,7 @@ class SequenceDataset(torch.utils.data.Dataset):
         return batch
         """
         ## begin modifed (added lines)
-        batch = BatchV2(actions, observations[:,0]) # take only the first observation of the trajectory
+        batch = BatchV2(actions, observations[0]) # take only the first observation of the trajectory
         return batch
 
 

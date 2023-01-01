@@ -16,10 +16,10 @@ from .helpers import (
 
 
 class ResidualTemporalBlock(nn.Module):
-    ## begin modified: added as input the observation embedding dimention (obs_embed_dim)
-    def __init__(self, inp_channels, out_channels, embed_dim, horizon, kernel_size=5, obs_embed_dim=10):
+    ## begin modified: added as input the observation  dimension (obs_embed_dim)
+    def __init__(self, inp_channels, out_channels, embed_dim, horizon, kernel_size=5, obs_dim=10):
         super().__init__()
-
+        #print("\n\n \tin_channels, out_channels \n\n", inp_channels, out_channels)
         # to be modified ?: replace Conv1dBlock(inp_channels, ...) by Conv1dBlock(inp_channels+obs_embed_dim,...)
         self.blocks = nn.ModuleList([
             Conv1dBlock(inp_channels, out_channels, kernel_size),
@@ -33,8 +33,9 @@ class ResidualTemporalBlock(nn.Module):
         )
         ## begin modified: adding observation embedding
         self.observation_mlp = nn.Sequential(
+            nn.Linear(obs_dim, obs_dim//2),
             nn.Mish(),
-            nn.Linear(obs_embed_dim, out_channels),
+            nn.Linear(obs_dim//2, 1+obs_dim//3),
             Rearrange('batch t -> batch t 1'),
         )
         ## end added
@@ -42,7 +43,7 @@ class ResidualTemporalBlock(nn.Module):
             if inp_channels != out_channels else nn.Identity()
 
     # modified added input obs 
-    def forward(self, x, t, obs):
+    def forward(self, x, obs, t):
         '''
             x : [ batch_size x inp_channels x horizon ] 
             t : [ batch_size x embed_dim ]
@@ -52,13 +53,13 @@ class ResidualTemporalBlock(nn.Module):
             out : [ batch_size x out_channels x horizon ]
         '''
         ## begin modified (adding the observation embedding in the Residual block)
-        #out = self.blocks[0](x) + self.time_mlp(t)
-        #out = self.blocks[1](out)
-        obs= self.observation_mlp(obs) # [batch_size x obs_embed_dim x 1]
-        horizon = x.size(2)
-        obs = obs.repeat(1,1,horizon)  # [batch_size x obs_embed_dim x horizon]
-        out = torch.cat((x, obs), dim=1)
-        out = self.blocks[0](out) + self.time_mlp(t)
+        #print("\n\n obs.shape, t.shape\n\n", obs.shape, t.shape)
+        #obs= self.observation_mlp(obs) # [batch_size x (1+obs_dim//3) x 1]
+        #horizon = x.size(2)
+        #obs = obs.repeat(1,1,horizon)  # [batch_size x (1+obs_dim//3) x horizon]
+        #out = torch.cat((x, obs), dim=1)
+        out = self.blocks[0](x) + self.time_mlp(t)
+        out = self.blocks[1](out)
         return out + self.residual_conv(x)
 
 # begin modified: transition_dim = action_dim (and not anymore: transition_dim = action_dim+observation_dim)
@@ -76,7 +77,7 @@ class TemporalUnet(nn.Module):
     ):
         super().__init__()
         ## modified: replaced 'dims = [transition_dim+obs_embed_dim,..]' by 'dims = [transition_dim+obs_embed_dim,...]'
-        dims = [transition_dim+obs_embed_dim, *map(lambda m: dim * m, dim_mults)]
+        dims = [transition_dim+1+cond_dim//3, *map(lambda m: dim * m, dim_mults)]
         in_out = list(zip(dims[:-1], dims[1:]))
         print(f'[ models/temporal ] Channel dimensions: {in_out}')
 
@@ -85,15 +86,17 @@ class TemporalUnet(nn.Module):
             SinusoidalPosEmb(dim),
             nn.Linear(dim, dim * 4),
             nn.Mish(),
-            nn.Linear(dim * 4, cond_dim),
+            nn.Linear(dim * 4, dim),
         )
 
         self.cond_dim = cond_dim
         ## begin modified (adding an embdding for observation)
-        self.observation_mlp =self.nn.Sequential(
+        self.observation_mlp =nn.Sequential(
             nn.Linear(cond_dim, cond_dim * 2),
             nn.Mish(),
             nn.Linear(cond_dim * 2, cond_dim),
+            nn.Mish(),
+            nn.Linear(cond_dim, 1+cond_dim//3),
         )
         ## end modified
         self.downs = nn.ModuleList([])
@@ -105,8 +108,8 @@ class TemporalUnet(nn.Module):
             is_last = ind >= (num_resolutions - 1)
 
             self.downs.append(nn.ModuleList([
-                ResidualTemporalBlock(dim_in, dim_out, embed_dim=time_dim, horizon=horizon, obs_embed_dim=obs_embed_dim),
-                ResidualTemporalBlock(dim_out, dim_out, embed_dim=time_dim, horizon=horizon, obs_embed_dim=obs_embed_dim),
+                ResidualTemporalBlock(dim_in, dim_out, embed_dim=time_dim, horizon=horizon, obs_dim=cond_dim),
+                ResidualTemporalBlock(dim_out, dim_out, embed_dim=time_dim, horizon=horizon, obs_dim=cond_dim),
                 Residual(PreNorm(dim_out, LinearAttention(dim_out))) if attention else nn.Identity(),
                 Downsample1d(dim_out) if not is_last else nn.Identity()
             ]))
@@ -115,16 +118,16 @@ class TemporalUnet(nn.Module):
                 horizon = horizon // 2
 
         mid_dim = dims[-1]
-        self.mid_block1 = ResidualTemporalBlock(mid_dim, mid_dim, embed_dim=time_dim, horizon=horizon, obs_embed_dim=obs_embed_dim)
+        self.mid_block1 = ResidualTemporalBlock(mid_dim, mid_dim, embed_dim=time_dim, horizon=horizon, obs_dim=cond_dim)
         self.mid_attn = Residual(PreNorm(mid_dim, LinearAttention(mid_dim))) if attention else nn.Identity()
-        self.mid_block2 = ResidualTemporalBlock(mid_dim, mid_dim, embed_dim=time_dim, horizon=horizon, obs_embed_dim=obs_embed_dim)
+        self.mid_block2 = ResidualTemporalBlock(mid_dim, mid_dim, embed_dim=time_dim, horizon=horizon, obs_dim=cond_dim)
 
         for ind, (dim_in, dim_out) in enumerate(reversed(in_out[1:])):
             is_last = ind >= (num_resolutions - 1)
 
             self.ups.append(nn.ModuleList([
-                ResidualTemporalBlock(dim_out * 2, dim_in, embed_dim=time_dim, horizon=horizon, obs_embed_dim=obs_embed_dim),
-                ResidualTemporalBlock(dim_in, dim_in, embed_dim=time_dim, horizon=horizon, obs_embed_dim=obs_embed_dim),
+                ResidualTemporalBlock(dim_out * 2, dim_in, embed_dim=time_dim, horizon=horizon, obs_dim=cond_dim),
+                ResidualTemporalBlock(dim_in, dim_in, embed_dim=time_dim, horizon=horizon, obs_dim=cond_dim),
                 Residual(PreNorm(dim_in, LinearAttention(dim_in))) if attention else nn.Identity(),
                 Upsample1d(dim_in) if not is_last else nn.Identity()
             ]))
@@ -137,7 +140,7 @@ class TemporalUnet(nn.Module):
             nn.Conv1d(dim, transition_dim, 1),
         )
     # modified: add 'obs' as input (observation at the first time step of the trajectory)
-    def forward(self, x, obs, cond, time):
+    def forward(self, x, obs, time):
         '''
             x : [ batch x horizon x transition ]
         '''
@@ -147,24 +150,28 @@ class TemporalUnet(nn.Module):
         t = self.time_mlp(time)
         ## begin modified (added observation embedding)
         obs = self.observation_mlp(obs)
+        obs = einops.rearrange(obs, 'batch t -> batch t 1')
+        horizon = x.size(2)
+        obs = obs.repeat(1,1,horizon)
+        x = torch.cat((x, obs), dim=1)
         ## end modified
         h = []
 
         for resnet, resnet2, attn, downsample in self.downs:
-            x = resnet(x, t, obs)
-            x = resnet2(x, t, obs)
+            x = resnet(x, obs, t)
+            x = resnet2(x, obs, t)
             x = attn(x)
             h.append(x)
             x = downsample(x)
 
-        x = self.mid_block1(x, t, obs)
+        x = self.mid_block1(x, obs, t)
         x = self.mid_attn(x)
-        x = self.mid_block2(x, t, obs)
+        x = self.mid_block2(x, obs, t)
 
         for resnet, resnet2, attn, upsample in self.ups:
             x = torch.cat((x, h.pop()), dim=1)
-            x = resnet(x, t, obs)
-            x = resnet2(x, t, obs)
+            x = resnet(x, obs, t)
+            x = resnet2(x, obs, t)
             x = attn(x)
             x = upsample(x)
 

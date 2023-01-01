@@ -5,15 +5,13 @@ channels:
 dependencies:
 - python=3.8
 - pip
-#- patchelf
+- patchelf
 - pip:
     - -f https://download.pytorch.org/whl/torch_stable.html
     - numpy
     - gym==0.18.0
-    - mujoco-py==2.0.2.13
+    - mujoco-py
     - matplotlib==3.3.4
-
-    
     - torch==1.9.1+cu111
     - typed-argument-parser
     - git+https://github.com/Farama-Foundation/d4rl@f2a05c0d66722499bf8031b094d9af3aea7c372b#egg=d4rl

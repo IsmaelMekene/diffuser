@@ -50,7 +50,7 @@ model_config = utils.Config(
     horizon=args.horizon,
     ## begin modified (changing transition dim to make it equal to action_dim)
     #transition_dim=observation_dim + action_dim,
-    transition_dim=observation_dim
+    transition_dim=action_dim,
     ## enf added
     cond_dim=observation_dim,
     dim_mults=args.dim_mults,
@@ -109,7 +109,9 @@ trainer = trainer_config(diffusion, dataset, renderer)
 utils.report_parameters(model)
 
 print('Testing forward...', end=' ', flush=True)
+#print("shape data set", dataset[0].shape)
 batch = utils.batchify(dataset[0])
+#print("batch observation", batch)
 loss, _ = diffusion.loss(*batch)
 loss.backward()
 print('✓')

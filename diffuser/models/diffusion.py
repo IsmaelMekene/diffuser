@@ -13,8 +13,8 @@ from .helpers import (
 )
 
 
-Sample = namedtuple('Sample', 'trajectories values chains')
-
+#Sample = namedtuple('Sample', 'trajectories values chains')
+Sample = namedtuple('Sample', 'actions values chains')
 
 @torch.no_grad()
 def default_sample_fn(model, x, cond, t):
@@ -196,10 +196,10 @@ class GaussianDiffusion(nn.Module):
             conditions : [ (time, state), ... ]
         '''
         device = self.betas.device
-        batch_size = len(obs[0]) # modified: batch_size = len(cond[0]) 
+        batch_size = len(obs) # modified: batch_size = len(cond[0]) 
         horizon = horizon or self.horizon
         shape = (batch_size, horizon, self.transition_dim)
-
+        print("\n\n ((batch_size, horizon, self.transition_dim))", shape, "\n\n")
         return self.p_sample_loop(shape, obs, **sample_kwargs)
 
     #------------------------------------------ training ------------------------------------------#

@@ -42,3 +42,11 @@ class Logger:
             'epoch_diffusion': diffusion_experiment.epoch, 'epoch_value': value_experiment.epoch}
         json.dump(json_data, open(json_path, 'w'), indent=2, sort_keys=True)
         print(f'[ utils/logger ] Saved log to {json_path}')
+
+    # added for unguided sampling
+    def finish_unguided(self, t, score, total_reward, terminal, diffusion_experiment):
+        json_path = os.path.join(self.savepath, 'rollout.json')
+        json_data = {'score': score, 'step': t, 'return': total_reward, 'term': terminal,
+            'epoch_diffusion': diffusion_experiment.epoch}
+        json.dump(json_data, open(json_path, 'w'), indent=2, sort_keys=True)
+        print(f'[ utils/logger ] Saved log to {json_path}')
