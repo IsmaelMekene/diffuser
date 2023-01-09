@@ -16,6 +16,11 @@ args = Parser().parse_args('diffusion')
 #---------------------------------- dataset ----------------------------------#
 #-----------------------------------------------------------------------------#
 
+if args.dataset in ['Push-v0', 'push-v0']:
+    termination_penalty=None 
+else:
+    termination_penalty=0
+
 dataset_config = utils.Config(
     args.loader,
     savepath=(args.savepath, 'dataset_config.pkl'),
@@ -25,16 +30,24 @@ dataset_config = utils.Config(
     preprocess_fns=args.preprocess_fns,
     use_padding=args.use_padding,
     max_path_length=args.max_path_length,
+    termination_penalty=termination_penalty,
 )
 
-render_config = utils.Config(
-    args.renderer,
-    savepath=(args.savepath, 'render_config.pkl'),
-    env=args.dataset,
-)
+if args.dataset not in ['Push-v0', 'push-v0']:
+  render_config = utils.Config(
+      args.renderer,
+      savepath=(args.savepath, 'render_config.pkl'),
+      env=args.dataset,
+  )
+else:
+  renderer_config = None
 
 dataset = dataset_config()
-renderer = render_config()
+
+if args.dataset not in ['Push-v0', 'push-v0']:
+  renderer = render_config()
+else:
+  renderer=None
 
 observation_dim = dataset.observation_dim
 action_dim = dataset.action_dim
@@ -56,6 +69,8 @@ model_config = utils.Config(
     dim_mults=args.dim_mults,
     attention=args.attention,
     device=args.device,
+    obs_type = args.obs_type,
+    obs_embed_dim=50,
 )
 
 diffusion_config = utils.Config(

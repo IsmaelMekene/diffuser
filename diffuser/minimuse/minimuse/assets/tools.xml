@@ -1,0 +1,11 @@
+<mujoco>
+    <asset>
+        <texture builtin="flat" type="2d" name="broom_tex" height="32" width="32" />
+        <material name="broom_mat" specular="0.5" shininess="0.2" reflectance="0" texture="broom_tex" />
+    </asset>
+    <worldbody>
+        <body mocap="true" childclass="tool" name="broom_mocap" pos="0.4 0.0 0.1">
+            <geom name="broom" size="0.0175 0.035" type="cylinder" material="broom_mat" rgba="0.3 0.3 0.3 1" />
+        </body>
+    </worldbody>
+</mujoco>

@@ -1,0 +1,35 @@
+<mujoco>
+    <compiler angle="radian" />
+    <size njmax="500" nconmax="100" />
+    <!-- initial -->
+    <option timestep="2e-3"
+            iterations="10"
+            tolerance="1e-10"
+            solver="Newton"
+            cone="elliptic"
+            impratio="2"
+            noslip_iterations="2"
+    >
+        <flag warmstart="enable"></flag>
+    </option>
+    <visual>
+        <map znear="0.001"/>
+
+    </visual>
+    <!-- default geom and joints parameters -->
+    <default>
+        <geom condim="4" solref="0.005 1" solimp="0.95 0.99 0.001"/>
+        <default class="tool">
+           <joint armature="0.25" damping="1" stiffness="0.01" />
+        </default>
+
+        <default class="cube0">
+            <joint type="free" damping="0.1" frictionloss="0.3" />
+            <geom condim="3" mass="45" />
+        </default>
+    </default>
+
+    <visual>
+        <scale forcewidth='0.02' contactwidth='0.06' contactheight='0.02' jointwidth='0.02' framewidth='0.02' framelength='0.3'/>
+    </visual>
+</mujoco>

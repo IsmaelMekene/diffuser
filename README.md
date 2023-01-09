@@ -1,27 +1,34 @@
 # Planning with Diffusion &nbsp;&nbsp; [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/drive/1YajKhu-CUIGBJeQPehjVPJcK_b38a8Nc?usp=sharing)
 
+This project is built on the top of the Diffuser [paper [1]](https://arxiv.org/abs/2205.09991) and its [code](https://github.com/jannerm/diffuser/tree/main).
 
-Training and visualizing of diffusion models from [Planning with Diffusion for Flexible Behavior Synthesis](https://diffusion-planning.github.io/).
+The original [Diffuser](https://diffusion-planning.github.io/) model developped by generates trajectories by iteratively denoising randomly sampled plans. The Diffusion is performed on the sequences of states-actions pairs [s_t,a_t,...,s_T,a_T] (*T* denotes the horizon)
 
-The [main branch](https://github.com/jannerm/diffuser/tree/main) contains code for training diffusion models and planning via value-function guided sampling on the D4RL locomotion environments.
-The [kuka branch](https://github.com/jannerm/diffuser/tree/kuka) contains block-stacking experiments.
-The [maze2d branch](https://github.com/jannerm/diffuser/tree/maze2d) contains goal-reaching via inpainting in the Maze2D environments.
+Our first extension is to reduce training and inference time by adapting the model such that  diffusion is only performed on the sequence of future actions [a_t,...,a_T] (to enable the model to handle efficently *image based observations*, and not only state-vector observations). Crucially, the current state $s_t$ is given to the model as input, like in conditional diffusion, but diffusion is only performed on the sequences of action. 
 
-<p align="center">
-    <img src="https://diffusion-planning.github.io/images/diffuser-card.png" width="60%" title="Diffuser model">
-</p>
-
-**Updates**
-- 12/09/2022: Diffuser (the RL model) has been integrated into 🤗 Diffusers (the Hugging Face diffusion model library)! See [these docs](https://huggingface.co/docs/diffusers/using-diffusers/rl) for how to run Diffuser using their pipeline.
-- 10/17/2022: A bug in the value function scaling has been fixed in [this commit](https://github.com/jannerm/diffuser/commit/3d7361c2d028473b601cc04f5eecd019e14eb4eb). Thanks to [Philemon Brakel](https://scholar.google.com/citations?user=Q6UMpRYAAAAJ&hl=en) for catching it!
-
+<\details>
+<summary>
+Thus, the new input is [a_t,...,a_T,s_t] instead of [a_t,...,a_T,s_t]. (expand to see more details)
+</summary>
+In the original [paper](https://arxiv.org/abs/2205.09991), the authors trained a separate network *h* to guide the agent toward regions with high reward. We propose here to note use such a network, thus we are in a *fully imitation leaning setting*. But such a choice could lead to very poor performance, since the *guidance function* was explicity used to guide the agent toward regions with the highest regions. To still have competitive experience, we propose to sample by batch at inference time. That simply means, as in training time, we use a batch size of 64 (this value can be adjusted by simply overriding the parameter --batch_size during planning). Then the diffuser model will denoise *batch-size* different randomly generated trajectories and takes the mean. Note this computation is done in parallel, like at training time, and is fairly fast (contrary to the original paper, we recall, we only perform diffusion on actions, and the vector of action a_t is much smaller than the sate vectors $s_t$ in general). This choice is justified by image denoising technics like the use of mean filter. Let $\tilde{x}$ a noisy image, obtained by adding a random gaussian noise $\epsilon$ to an original image *x*. ($\tilde{x}=x+\epsilon$ with $\epsilon \sim N(0,\sigma^2I_d)$. By simply averaging the pixel values of the noisy image $x$ in a window size $\lamda$, the variance of the denoise is divided by $\lambda$, thus the noise ratio becomes $\frac{\sigma}{\lambda}$. In image denoising the window size $\lamda$ cannot be arbitrary large ($\lambda \le 8$ in most case) because the sharpeness of the image can be lost, resulting in a blurry denoised image. On the contrary here, by averaging the actions prediction over the batch dimension, we gain in term of noise reduction without any side effects, since the action space is continuous (and closed under averaging, because its a segment).
+</details>
 ## Quickstart
 
-Load a pretrained diffusion model and sample from it in your browser with [scripts/diffuser-sample.ipynb](https://colab.research.google.com/drive/1YajKhu-CUIGBJeQPehjVPJcK_b38a8Nc?usp=sharing).
-
-
+  Clone this repo.
 ## Installation
 
+1. Install mujoco and set the key. For example, one can use these lines of code
+
+```
+mkdir ~/.mujoco
+cd ~/.mujoco
+wget https://mujoco.org/download/mujoco210-linux-x86_64.tar.gz
+tar -xf mujoco210-linux-x86_64.tar.gz 
+wget https://www.roboti.us/file/mjkey.txt
+cp mjkey.txt ~/.mujoco/mujoco210/bin
+```
+
+2. Install dependencies and an virtual environment
 ```
 conda env create -f environment.yml
 conda activate diffuser
@@ -29,10 +36,11 @@ pip install -e .
 ```
 
 ## Using pretrained models
+We train for *600 000* stepts Diffuser in the mujoco in the mujoco environments *halfcheetah* and *walker-2d* (using the D4RL medium-expert dataset). One can download the pretrained weights from this drive [link](https://drive.google.com/drive/folders/11tfJ8XO1pYn3gEhs5Wg14M2i9k2VYw-m?usp=sharing)
 
-### Downloading weights
+### Downloading weights from the original paper
 
-Download pretrained diffusion models and value functions with:
+Download pretrained diffusion models and value functions of the original [paper](https://arxiv.org/abs/2205.09991)  with:
 ```
 ./scripts/download_pretrained.sh
 ```
@@ -59,7 +67,15 @@ The png files contain samples from different points during training of the diffu
 
 ### Planning
 
-To plan with guided sampling, run:
+### Unguided planning (see description above)
+
+To generate a sequence of future actions [a_t,...,a_{t+horizon}] up to an *horizon* (below we use horizon=32), run
+
+```
+python scripts/plan_unguided.py --horizon 32 --dataset walker2d-medium-expert-v2 --logbase /logs
+```
+### Guided planning
+To plan with guided sampling (orignal method), run:
 ```
 python scripts/plan_guided.py --dataset halfcheetah-medium-expert-v2 --logbase logs/pretrained
 ```
@@ -68,13 +84,10 @@ The `--logbase` flag points the [experiment loaders](scripts/plan_guided.py#L22-
 You can override planning hyperparameters with flags, such as `--batch_size 8`, but the default
 hyperparameters are a good starting point.
 
-**Results.** The current codebase performs a few points better (averaged over environments) than
-described in the arxiv v1 paper due to small tweaks to the architecture and objective. It is also
-somewhat faster. The arxiv paper will be updated shortly to reflect these changes.
 
 ## Training from scratch
 
-1. Train a diffusion model with:
+1. Train **an unguided** diffusion model with:
 ```
 python scripts/train.py --dataset halfcheetah-medium-expert-v2
 ```
@@ -82,14 +95,8 @@ python scripts/train.py --dataset halfcheetah-medium-expert-v2
 The default hyperparameters are listed in [locomotion:diffusion](config/locomotion.py#L22-L65).
 You can override any of them with flags, eg, `--n_diffusion_steps 100`.
 
-2. Train a value function with:
-```
-python scripts/train_values.py --dataset halfcheetah-medium-expert-v2
-```
-See [locomotion:values](config/locomotion.py#L67-L108) for the corresponding default hyperparameters.
 
-
-3. Plan using your newly-trained models with the same command as in the pretrained planning section, simply replacing the logbase to point to your new models:
+2. Plan using your newly-trained models with the same command as in the pretrained planning section, simply replacing the logbase to point to your new models:
 ```
 python scripts/plan_guided.py --dataset halfcheetah-medium-expert-v2 --logbase logs
 ```
@@ -105,70 +112,6 @@ For example, the following flags:
 will resolve to a value checkpoint path of `values/defaults_H32_T20_d0.997`. It is possible to
 change the horizon of the diffusion model after training (see [here](https://colab.research.google.com/drive/1YajKhu-CUIGBJeQPehjVPJcK_b38a8Nc?usp=sharing) for an example),
 but not for the value function.
-
-## Docker
-
-1. Build the image:
-```
-docker build -f Dockerfile . -t diffuser
-```
-
-2. Test the image:
-```
-docker run -it --rm --gpus all \
-    --mount type=bind,source=$PWD,target=/home/code \
-    --mount type=bind,source=$HOME/.d4rl,target=/root/.d4rl \
-    diffuser \
-    bash -c \
-    "export PYTHONPATH=$PYTHONPATH:/home/code && \
-    python /home/code/scripts/train.py --dataset halfcheetah-medium-expert-v2 --logbase logs"
-```
-
-## Singularity
-
-1. Build the image:
-```
-singularity build --fakeroot diffuser.sif Singularity.def
-```
-
-2. Test the image:
-```
-singularity exec --nv --writable-tmpfs diffuser.sif \
-        bash -c \
-        "pip install -e . && \
-        python scripts/train.py --dataset halfcheetah-medium-expert-v2 --logbase logs"
-```
-
-
-## Running on Azure
-
-#### Setup
-
-1. Tag the Docker image (built in the [Docker section](#Docker)) and push it to Docker Hub:
-```
-export DOCKER_USERNAME=$(docker info | sed '/Username:/!d;s/.* //')
-docker tag diffuser ${DOCKER_USERNAME}/diffuser:latest
-docker image push ${DOCKER_USERNAME}/diffuser
-```
-
-3. Update [`azure/config.py`](azure/config.py), either by modifying the file directly or setting the relevant [environment variables](azure/config.py#L47-L52). To set the `AZURE_STORAGE_CONNECTION` variable, navigate to the `Access keys` section of your storage account. Click `Show keys` and copy the `Connection string`.
-
-4. Download [`azcopy`](https://docs.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-v10): `./azure/download.sh`
-
-#### Usage
-
-Launch training jobs with `python azure/launch.py`. The launch script takes no command-line arguments; instead, it launches a job for every combination of hyperparameters in [`params_to_sweep`](azure/launch_train.py#L36-L38).
-
-
-#### Viewing results
-
-To rsync the results from the Azure storage container, run `./azure/sync.sh`.
-
-To mount the storage container:
-1. Create a blobfuse config with `./azure/make_fuse_config.sh`
-2. Run `./azure/mount.sh` to mount the storage container to `~/azure_mount`
-
-To unmount the container, run `sudo umount -f ~/azure_mount; rm -r ~/azure_mount`
 
 
 ## Reference

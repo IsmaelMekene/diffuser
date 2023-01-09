@@ -5,6 +5,7 @@ import diffuser.utils as utils
 import torch
 import einops
 from diffuser.datasets.preprocessing import get_policy_preprocess_fn
+import numpy as np 
 
 #-----------------------------------------------------------------------------#
 #----------------------------------- setup -----------------------------------#
@@ -32,7 +33,7 @@ diffusion_experiment = utils.load_diffusion(
 #    epoch=args.value_epoch, seed=args.seed,
 #)
 
-## ensure that the diffusion model and value function are compatible with each other
+#ensure that the diffusion model and value function are compatible with each other
 #utils.check_compatibility(diffusion_experiment, value_experiment)
 
 diffusion = diffusion_experiment.ema
@@ -137,6 +138,8 @@ observation = env.reset()
 rollout = [observation.copy()]
 
 total_reward = 0
+sum_std = 0
+mean_abs_action = 0
 for t in range(args.max_episode_length):
 
     if t % 10 == 0: print(args.savepath, flush=True)
@@ -171,7 +174,17 @@ for t in range(args.max_episode_length):
     actions = dataset.normalizer.unnormalize(actions, 'actions')
 
     ## extract first action
-    action = actions[0, 0]
+    #a_ = actions
+    #action = actions[0,0]
+    if t==0:
+      sum_std = actions.std(0)[0]
+      mean_abs_action = np.abs(actions).mean(0)[0]
+    else:
+      sum_std += actions.std(0)[0]
+      mean_abs_action += np.abs(actions).mean(0)[0]
+    action = actions.mean(0)[0] # mean over the batch dimension, then take first action
+    #if t<5:
+    #  print("\n\n action:", action, "\n\n")
 
     ## execute action in environment
     next_observation, reward, terminal, _ = env.step(action)
@@ -196,5 +209,12 @@ for t in range(args.max_episode_length):
 
     observation = next_observation
 
+with open('std_mean_actions.txt', 'a') as f:
+  f.write("\n"+str(sum_std/args.max_episode_length)+ "\n")
+  f.write(str(mean_abs_action/args.max_episode_length)+"\n")
+print("\n std of actions along batch dimension", sum_std/args.max_episode_length)
+print("\n mean absolute value of actions along batch dimension", mean_abs_action/args.max_episode_length)
+#print(a_[0,0].shape)
+#print(a_.mean(0)[0].shape)
 ## write results to json file at `args.savepath`
 logger.finish_unguided(t, score, total_reward, terminal, diffusion_experiment)

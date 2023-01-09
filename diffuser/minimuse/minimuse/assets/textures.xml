@@ -1,0 +1,17 @@
+<mujoco>
+    <asset>
+        <!-- textures -->
+        <!-- floor/table/background -->
+        <texture builtin="gradient" type="skybox" name="skybox" rgb1="0.4 0.6 0.8" rgb2="0 0 0" width="256" height="256"/>
+        <texture builtin="checker" type="2d" name="floor_tex" rgb1=".2 .3 .4" rgb2=".1 .2 .3" width="256" height="256" mark="edge" markrgb=".8 .8 .8" />
+        <texture builtin="flat" type="2d" name="wall0_tex" rgb1=".2 .3 .4" rgb2=".1 .2 .3" width="256" height="256" mark="edge" markrgb=".8 .8 .8" />
+        <texture builtin="flat" type="2d" name="wall1_tex" rgb1=".2 .3 .4" rgb2=".1 .2 .3" width="256" height="256" mark="edge" markrgb=".8 .8 .8" />
+        <texture builtin="flat" type="2d" name="table_tex" rgb1="0.192 0.356 0.451" height="256" width="256"  />
+
+        <!-- material -->
+        <material name="floor_mat" texrepeat="5 5" texuniform="true" reflectance="0.0" texture="floor_tex" />
+        <material name="wall0_mat" texrepeat="5 5" texuniform="true" reflectance="0" texture="wall0_tex" />
+        <material name="wall1_mat" texrepeat="5 5" texuniform="true" reflectance="0" texture="wall1_tex" />
+        <material name="table_mat" texrepeat="5 5" texuniform="true" shininess="0.4" specular="0.7" reflectance="0" texture="table_tex" />
+    </asset>
+</mujoco>

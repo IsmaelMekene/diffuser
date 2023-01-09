@@ -1,0 +1,18 @@
+<mujoco>
+    <worldbody>
+        <!-- in mujoco: unit quaternion e = (1 0 0 0), q = (w x y z)
+                        camera renders along -Z
+             in calibration tools / bullet: q = (x y z w) in calibration tools
+                        camera renders along Z
+        -->
+        <body name="frontal_camera">
+            <camera name="lateral_camera" fovy="42.5" pos="0.0 0.65 0.400215" quat="0  0 -0.4152266 -0.9097179" />
+        </body>
+        <body name="lateral_camera">
+            <camera name="frontal_camera" fovy="42.5" pos="-0.65 0.005 0.403127" quat=" 0.64261454  0.2973069  -0.29811335 -0.64014342"  />
+        </body>
+        <body name="top_camera">
+            <camera name="top_camera" fovy="42.5" pos="0 0.1  0.95" quat="0 0 0 -1"  />
+        </body>
+    </worldbody>
+</mujoco>

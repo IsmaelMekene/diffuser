@@ -1,5 +1,13 @@
 bin/
 logs/
+logs2/
+logs_train/
+logs_test/
+collected_data_with_reward3/
+collected_data_with_reward2/
+collected_data_with_reward_img/
+
+std_mean_actions.txt
 wandb/
 
 *.sif

@@ -1,0 +1,25 @@
+name: minimuse
+channels:
+  - defaults
+  - conda-forge
+  - anaconda
+  - menpo
+  - pytorch
+  - nvidia
+dependencies:
+  - python
+  - gym
+  - scipy
+  - matplotlib
+  - sk-video
+  - glew
+  - patchelf
+  - ffmpeg
+  - tqdm
+  - einops
+  - pytorch
+  - torchvision
+  - pip
+  - pip:
+      - mujoco-py
+      - torchvision
