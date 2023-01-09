@@ -6,18 +6,20 @@ The original [Diffuser](https://diffusion-planning.github.io/) model developped 
 
 Our first extension is to reduce training and inference time by adapting the model such that  diffusion is only performed on the sequence of future actions [a_t,...,a_T] (to enable the model to handle efficently *image based observations*, and not only state-vector observations). Crucially, the current state $s_t$ is given to the model as input, like in conditional diffusion, but diffusion is only performed on the sequences of action. 
 
-<\details>
+<details>
 <summary>
 Thus, the new input is [a_t,...,a_T,s_t] instead of [a_t,...,a_T,s_t]. (expand to see more details)
 </summary>
 In the original [paper](https://arxiv.org/abs/2205.09991), the authors trained a separate network *h* to guide the agent toward regions with high reward. We propose here to note use such a network, thus we are in a *fully imitation leaning setting*. But such a choice could lead to very poor performance, since the *guidance function* was explicity used to guide the agent toward regions with the highest regions. To still have competitive experience, we propose to sample by batch at inference time. That simply means, as in training time, we use a batch size of 64 (this value can be adjusted by simply overriding the parameter --batch_size during planning). Then the diffuser model will denoise *batch-size* different randomly generated trajectories and takes the mean. Note this computation is done in parallel, like at training time, and is fairly fast (contrary to the original paper, we recall, we only perform diffusion on actions, and the vector of action a_t is much smaller than the sate vectors $s_t$ in general). This choice is justified by image denoising technics like the use of mean filter. Let $\tilde{x}$ a noisy image, obtained by adding a random gaussian noise $\epsilon$ to an original image *x*. ($\tilde{x}=x+\epsilon$ with $\epsilon \sim N(0,\sigma^2I_d)$. By simply averaging the pixel values of the noisy image $x$ in a window size $\lamda$, the variance of the denoise is divided by $\lambda$, thus the noise ratio becomes $\frac{\sigma}{\lambda}$. In image denoising the window size $\lamda$ cannot be arbitrary large ($\lambda \le 8$ in most case) because the sharpeness of the image can be lost, resulting in a blurry denoised image. On the contrary here, by averaging the actions prediction over the batch dimension, we gain in term of noise reduction without any side effects, since the action space is continuous (and closed under averaging, because its a segment).
 </details>
-## Quickstart
 
-  Clone this repo.
+
+## Quickstart
+Clone this repo.
+
 ## Installation
 
-1. Install mujoco and set the key. For example, one can use these lines of code
+1. Install mujoco and set the key. For example, one can run these commands
 
 ```
 mkdir ~/.mujoco
