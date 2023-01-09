@@ -2,10 +2,16 @@ name: diffuser
 channels:
 - defaults
 - conda-forge
+- menpo
+- pytorch
+- nvidia
 dependencies:
 - python=3.8
 - pip
 - patchelf
+- glew
+- scipy
+- sk-video
 - pip:
     - -f https://download.pytorch.org/whl/torch_stable.html
     - numpy
@@ -19,6 +25,8 @@ dependencies:
     - scikit-video==1.1.11
     - gitpython
     - einops
+    - torchvision
+    - opencv-python
     - ffmpeg
     - ffprobe
     - pillow

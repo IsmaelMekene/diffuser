@@ -31,6 +31,7 @@ base = {
         'dim_mults': (1, 2, 4, 8),
         'attention': False,
         'renderer': 'utils.MuJoCoRenderer',
+        'obs_type': 'state_features',
 
         ## dataset
         'loader': 'datasets.SequenceDataset',
@@ -61,10 +62,6 @@ base = {
         'bucket': None,
         'device': 'cuda',
         'seed': None,
-
-        ## resume training
-        'diffusion_epoch': 'latest',
-        'diffusion_loadpath': 'f:diffusion/defaults_H{horizon}_T{n_diffusion_steps}',
     },
 
     'values': {
@@ -107,7 +104,11 @@ base = {
         'n_reference': 8,
         'bucket': None,
         'device': 'cuda',
-        'seed': None,        
+        'seed': None,
+
+        # loading to resume training
+        'diffusion_loadpath': 'f:diffusion/defaults_H{horizon}_T{n_diffusion_steps}',
+        'diffusion_epoch': 'latest',
     },
 
     'plan': {
@@ -146,6 +147,47 @@ base = {
 
         'diffusion_epoch': 'latest',
         'value_epoch': 'latest',
+
+        'verbose': True,
+        'suffix': '0',
+    },
+
+    'plan_unguided': {
+        #'guide': 'sampling.ValueGuide',
+        #'policy': 'sampling.GuidedPolicy',
+        'max_episode_length': 1000,
+        'batch_size': 64,
+        'preprocess_fns': [],
+        'device': 'cuda',
+        'seed': None,
+
+        ## sample_kwargs
+        'n_guide_steps': 2,
+        'scale': 0.1,
+        't_stopgrad': 2,
+        'scale_grad_by_std': True,
+
+        ## serialization
+        'loadbase': None,
+        'logbase': logbase,
+        'prefix': 'plans/',
+        'exp_name': watch(args_to_watch),
+        'vis_freq': 100,
+        'max_render': 8,
+
+        ## diffusion model
+        'horizon': 32,
+        'n_diffusion_steps': 20,
+
+        ## value function
+        'discount': 0.997,
+
+        ## loading
+        'diffusion_loadpath': 'f:diffusion/defaults_H{horizon}_T{n_diffusion_steps}',
+        #'value_loadpath': 'f:values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
+
+        'diffusion_epoch': 'latest',
+        #'value_epoch': 'latest',
 
         'verbose': True,
         'suffix': '0',
