@@ -33,9 +33,10 @@ def load_config(*loadpath):
     print(config)
     return config
 
-def load_diffusion(*loadpath, epoch='latest', device='cuda:0', seed=None):
+def load_diffusion(*loadpath, epoch='latest', device='cuda:0', seed=None, env_name='halfcheetah-medium-expert-v2'):
     dataset_config = load_config(*loadpath, 'dataset_config.pkl')
-    render_config = load_config(*loadpath, 'render_config.pkl')
+    if env_name != 'Push-v0':
+      render_config = load_config(*loadpath, 'render_config.pkl')
     model_config = load_config(*loadpath, 'model_config.pkl')
     diffusion_config = load_config(*loadpath, 'diffusion_config.pkl')
     trainer_config = load_config(*loadpath, 'trainer_config.pkl')
@@ -45,7 +46,10 @@ def load_diffusion(*loadpath, epoch='latest', device='cuda:0', seed=None):
     trainer_config._dict['results_folder'] = os.path.join(*loadpath)
 
     dataset = dataset_config(seed=seed)
-    renderer = render_config()
+    if env_name != 'Push-v0' :
+      renderer = render_config()
+    else:
+      renderer=None
     model = model_config()
     diffusion = diffusion_config(model)
     trainer = trainer_config(diffusion, dataset, renderer)

@@ -1,8 +1,12 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import einops
 from einops.layers.torch import Rearrange
 import pdb
+import timm
+import torchvision.transforms as transforms
+import cv2
 
 from .helpers import (
     SinusoidalPosEmb,
@@ -62,6 +66,22 @@ class ResidualTemporalBlock(nn.Module):
         out = self.blocks[1](out)
         return out + self.residual_conv(x)
 
+class ResnetEncoder(nn.Module):
+    def __init__(self, obs_encoder_dim=50):
+        super().__init__()
+        self.resnet = timm.create_model('resnet18', pretrained=True, num_classes=0)
+        num_ftrs = 512 # nb_features resnet
+        #self.resnet.head = nn.Identity()
+        self.fc1 = nn.Linear(num_ftrs, obs_encoder_dim)
+        #self.fc2 = nn.Linear(num_ftrs//3, obs_encoder_dim)
+
+    def forward(self, x):
+        x = F.relu(self.resnet(x))
+        x = self.fc1(x)
+        #x =F.relu(self.fc2(x))
+        return x
+
+
 # begin modified: transition_dim = action_dim (and not anymore: transition_dim = action_dim+observation_dim)
 class TemporalUnet(nn.Module):
 
@@ -74,10 +94,15 @@ class TemporalUnet(nn.Module):
         dim_mults=(1, 2, 4, 8),
         attention=False,
         obs_embed_dim=10, # modified : added observation embedding dimension
+        obs_type='state_features',
     ):
         super().__init__()
         ## modified: replaced 'dims = [transition_dim+obs_embed_dim,..]' by 'dims = [transition_dim+obs_embed_dim,...]'
         dims = [transition_dim+1+cond_dim//3, *map(lambda m: dim * m, dim_mults)]
+        if obs_type=='pixel':
+          self.resnet_encoder = ResnetEncoder(obs_embed_dim)
+          dims = [transition_dim+obs_embed_dim, *map(lambda m: dim * m, dim_mults)]
+        
         in_out = list(zip(dims[:-1], dims[1:]))
         print(f'[ models/temporal ] Channel dimensions: {in_out}')
 
@@ -98,6 +123,9 @@ class TemporalUnet(nn.Module):
             nn.Mish(),
             nn.Linear(cond_dim, 1+cond_dim//3),
         )
+
+        if obs_type=='pixel':
+          self.resnet_encoder(obs_embed_dim)
         ## end modified
         self.downs = nn.ModuleList([])
         self.ups = nn.ModuleList([])
@@ -149,7 +177,11 @@ class TemporalUnet(nn.Module):
 
         t = self.time_mlp(time)
         ## begin modified (added observation embedding)
-        obs = self.observation_mlp(obs)
+        if self.obs_type != 'pixel': # obs=state_features
+          obs = self.observation_mlp(obs)
+        else: # obs=rgb image
+          obs = self.observation_mlp(obs)
+
         obs = einops.rearrange(obs, 'batch t -> batch t 1')
         horizon = x.size(2)
         obs = obs.repeat(1,1,horizon)

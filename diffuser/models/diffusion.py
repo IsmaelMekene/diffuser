@@ -199,7 +199,7 @@ class GaussianDiffusion(nn.Module):
         batch_size = len(obs) # modified: batch_size = len(cond[0]) 
         horizon = horizon or self.horizon
         shape = (batch_size, horizon, self.transition_dim)
-        print("\n\n ((batch_size, horizon, self.transition_dim))", shape, "\n\n")
+        #print("\n\n ((batch_size, horizon, self.transition_dim))", shape, "\n\n")
         return self.p_sample_loop(shape, obs, **sample_kwargs)
 
     #------------------------------------------ training ------------------------------------------#

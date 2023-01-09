@@ -34,7 +34,15 @@ def load_environment(name):
         return name
     with suppress_output():
         wrapped_env = gym.make(name)
+    
+    #for env in gym.envs.registry.env_specs:
+    #    if 'Push-v0' in env:
+    #      print('\nRemove {} from registry\n'.format(env))
+    #     del gym.registry.env_specs[env]
     env = wrapped_env.unwrapped
+    if 'push-v0' in str(env).lower():
+      wrapped_env._max_episode_steps = 600
+      wrapped_env.reward_threshold=1.0
     env.max_episode_steps = wrapped_env._max_episode_steps
     env.name = name
     return env

@@ -17,7 +17,16 @@ ENVIRONMENT_SPECS = (
         'id': 'AntFullObs-v2',
         'entry_point': ('diffuser.environments.ant:AntFullObsEnv'),
     },
+    {
+        'id': "Push-v0",
+        'entry_point': ('diffuser.environments.push:PushEnv'),
+   
+    }
+ 
 )
+
+#'max_episode_step': 600,
+#'reward_threshold': 1.0,
 
 def register_environments():
     try:

@@ -58,6 +58,10 @@ class ReplayBuffer:
         assert key not in self._dict
         dim = array.shape[-1]
         shape = (self.max_n_episodes, self.max_path_length, dim)
+        if len(array.shape) > 2:
+          dim = array.shape[1:]
+          shape = (self.max_n_episodes, self.max_path_length) + dim
+        
         self._dict[key] = np.zeros(shape, dtype=np.float32)
         # print(f'[ utils/mujoco ] Allocated {key} with size {shape}')
 
