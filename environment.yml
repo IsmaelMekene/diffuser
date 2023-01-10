@@ -8,7 +8,6 @@ channels:
 dependencies:
 - python=3.8
 - pip
-- patchelf
 - glew
 - scipy
 - sk-video

@@ -44,6 +44,67 @@ class DatasetNormalizer:
     def get_field_normalizers(self):
         return self.normalizers
 
+
+class DatasetNormalizerPush:
+
+    def __init__(self, dataset, normalizer, path_lengths=None):
+        dataset = flattenPush(dataset, path_lengths)
+
+        #self.observation_dim = dataset['observations'].shape[1]
+        self.action_dim = dataset['actions'].shape[1]
+
+        if type(normalizer) == str:
+            normalizer = eval(normalizer)
+
+        self.normalizers = {}
+        for key, val in dataset.items():
+            if key != 'observations':
+                try:
+                    self.normalizers[key] = normalizer(val)
+                except:
+                    print(f'[ utils/normalization ] Skipping {key} | {normalizer}')
+            else:
+                print(f'[ utils/normalization ] Skipping {key} | {normalizer}')
+
+    def __repr__(self):
+        string = ''
+        for key, normalizer in self.normalizers.items():
+            string += f'{key}: {normalizer}]\n'
+        return string
+
+    def __call__(self, *args, **kwargs):
+        return self.normalize(*args, **kwargs)
+
+    def normalize(self, x, key):
+        if key=='observations':
+            return x
+        return self.normalizers[key].normalize(x)
+
+    def unnormalize(self, x, key):
+        if key=='observations':
+            return x
+        return self.normalizers[key].unnormalize(x)
+
+    def get_field_normalizers(self):
+        return self.normalizers
+
+
+
+def flattenPush(dataset, path_lengths):
+    '''
+        flattens dataset of { key: [ n_episodes x max_path_lenth x dim ] }
+            to { key : [ (n_episodes * sum(path_lengths)) x dim ]}
+    '''
+    flattened = {}
+    for key, xs in dataset.items():
+        if key != "observations":
+            assert len(xs) == len(path_lengths)
+            flattened[key] = np.concatenate([
+                x[:length]
+                for x, length in zip(xs, path_lengths)
+            ], axis=0)
+    return flattened
+
 def flatten(dataset, path_lengths):
     '''
         flattens dataset of { key: [ n_episodes x max_path_lenth x dim ] }
@@ -143,8 +204,8 @@ class GaussianNormalizer(Normalizer):
         )
 
     def normalize(self, x):
-        print('\n\nnormalization.py: stds ', self.stds, "\n\n")
-        print('\n\nnormalization.py: means', self.means, "\n\n")
+        #print('\n\nnormalization.py: stds ', self.stds, "\n\n")
+        #print('\n\nnormalization.py: means', self.means, "\n\n")
         return (x - self.means) / (1e-8+self.stds)
 
     def unnormalize(self, x):

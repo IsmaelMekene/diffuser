@@ -65,7 +65,7 @@ class ReplayBuffer:
         self._dict[key] = np.zeros(shape, dtype=np.float32)
         # print(f'[ utils/mujoco ] Allocated {key} with size {shape}')
 
-    def add_path(self, path):
+    def add_path(self, path, env_name='hopper-medium-expert-v2'):
         path_length = len(path['observations'])
         assert path_length <= self.max_path_length
 
@@ -74,9 +74,11 @@ class ReplayBuffer:
 
         ## add tracked keys in path
         for key in self.keys:
-            array = atleast_2d(path[key])
-            if key not in self._dict: self._allocate(key, array)
-            self._dict[key][self._count, :path_length] = array
+            # condition added to NOT store observations in the RAM
+            if 'push' in env_name.lower() and key!='observations':
+                array = atleast_2d(path[key])
+                if key not in self._dict: self._allocate(key, array)
+                self._dict[key][self._count, :path_length] = array
 
         ## penalize early termination
         if path['terminals'].any() and self.termination_penalty is not None:
@@ -97,6 +99,7 @@ class ReplayBuffer:
     def finalize(self):
         ## remove extra slots
         for key in self.keys + ['path_lengths']:
-            self._dict[key] = self._dict[key][:self._count]
+            if key!='observations':
+                self._dict[key] = self._dict[key][:self._count]
         self._add_attributes()
         print(f'[ datasets/buffer ] Finalized replay buffer | {self._count} episodes')
