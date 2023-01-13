@@ -4,6 +4,7 @@ import torch
 import pdb
 import h5py
 import torchvision.transforms as transforms
+import random 
 
 from diffuser.datasets.preprocessing import get_preprocess_fn
 from diffuser.datasets.d4rl import load_environment
@@ -41,17 +42,27 @@ class SequenceDatasetPush(torch.utils.data.Dataset):
         self.horizon = horizon
         self.max_path_length = max_path_length
         self.use_padding = use_padding
-        
+        self.data_dir = data_dir
+
         entries = os.listdir(data_dir)
+        random.shuffle(entries)
+        i=0
+        # remove file whivh does not have the .hdf5 extentension
+        while i<len(entries):
+          if entries[i][-5:] !='.hdf5':
+            entries.pop(i)
+            i-=1
+          i+=1
+        print(f'\n Pushing task number  of trajectories: {len(entries)}\n')
         self.entries = entries # every file in entries contains a path
         h5path = os.path.join(data_dir, entries[0])
         self.n_episodes = len(entries)
         with h5py.File(h5path, 'r') as dataset_file:
             if self.obs_type == 'state_features':
-                self.observation_dim = dataset_file['observations_features'][0].shape
+                self.observation_dim = dataset_file['observations_features'].shape
             else: # obs_type='pixel': the observation are raw pixel images
-                self.observation_dim = dataset_file['observations'][0].shape #fields.observations.shape[-1]
-            self.action_dim = dataset_file['actions'][0].shape
+                self.observation_dim = dataset_file['observations'].shape #fields.observations.shape[-1]
+            self.action_dim = dataset_file['actions'][0].shape[0]
        
     def process_img(self, img):
         return transform_img(img).numpy()
@@ -67,11 +78,11 @@ class SequenceDatasetPush(torch.utils.data.Dataset):
             normed = self.normalizer(array, key)
             self.fields[f'normed_{key}'] = normed.reshape(self.n_episodes, self.max_path_length, -1)
 
-    def normalize_actions(self, actions):
+    def normalize_actions(self, actions, path_start, path_end):
         mean_actions = np.mean(actions)
         std_actions = np.std(actions)
         eps=1e-10
-        return (actions-mean_actions)/(eps+std_actions)
+        return (actions[path_start:path_end]-mean_actions)/(eps+std_actions)
 
     def get_conditions(self, observations):
         '''
@@ -96,11 +107,11 @@ class SequenceDatasetPush(torch.utils.data.Dataset):
                 return self.safe_batch()
             path_start = np.random.randint(0, episode_length-self.horizon+1)
             path_end = path_start + self.horizon
-            actions = self.normalize_actions(dataset_file['actions'][path_start:path_end], "actions")
+            actions = self.normalize_actions(dataset_file['actions'], path_start, path_end)
             if self.obs_type == 'state_features':
-                first_observation = dataset_file['observations_features'][path_start]
+                first_observation = dataset_file['observations_features']
             else: # obs_type='pixel': the observation are raw pixel images
-                first_observation = self.process_img(dataset_file["observations"][path_start])
+                first_observation = self.process_img(np.array(dataset_file["observations"]))
 
         batch = BatchV2(actions, first_observation)
         self.prev_batch = batch

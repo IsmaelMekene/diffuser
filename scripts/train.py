@@ -1,6 +1,6 @@
 import diffuser.utils as utils
 
-
+STATE_EMBEDDING_DIM = 50
 #-----------------------------------------------------------------------------#
 #----------------------------------- setup -----------------------------------#
 #-----------------------------------------------------------------------------#
@@ -18,6 +18,7 @@ args = Parser().parse_args('diffusion')
 
 if args.dataset in ['Push-v0', 'push-v0']:
     termination_penalty=None 
+    args.loader = 'datasets.SequenceDatasetPush'
 else:
     termination_penalty=0
 
@@ -31,7 +32,11 @@ dataset_config = utils.Config(
     use_padding=args.use_padding,
     max_path_length=args.max_path_length,
     termination_penalty=termination_penalty,
+    obs_type=args.obs_type, 
+    data_dir= args.data_dir,
 )
+
+dataset = dataset_config()
 
 if args.dataset not in ['Push-v0', 'push-v0']:
   render_config = utils.Config(
@@ -40,22 +45,29 @@ if args.dataset not in ['Push-v0', 'push-v0']:
       env=args.dataset,
   )
 else:
-  renderer_config = None
+  renderer_config = renderer= dataset.env.scene
 
-dataset = dataset_config()
 
 if args.dataset not in ['Push-v0', 'push-v0']:
   renderer = render_config()
-else:
-  renderer=None
 
 observation_dim = dataset.observation_dim
 action_dim = dataset.action_dim
 
+if args.dataset in ['Push-v0', 'push-v0']:
+    termination_penalty=None 
+    args.loader = 'datasets.SequenceDatasetPush'
+    cond_dim = STATE_EMBEDDING_DIM 
+else:
+    termination_penalty=0
+    cond_dim = observation_dim
+
+print(f'\n\n action_dim : {action_dim }, observation_dim: {observation_dim }\n\n' )
 
 #-----------------------------------------------------------------------------#
 #------------------------------ model & trainer ------------------------------#
 #-----------------------------------------------------------------------------#
+
 
 model_config = utils.Config(
     args.model,
@@ -65,12 +77,13 @@ model_config = utils.Config(
     #transition_dim=observation_dim + action_dim,
     transition_dim=action_dim,
     ## enf added
-    cond_dim=observation_dim,
+    cond_dim=cond_dim,
     dim_mults=args.dim_mults,
     attention=args.attention,
     device=args.device,
     obs_type = args.obs_type,
-    obs_embed_dim=50,
+    obs_embed_dim=STATE_EMBEDDING_DIM ,
+    path_pretrained_encoder=args.path_pretrained_encoder,
 )
 
 diffusion_config = utils.Config(
@@ -124,9 +137,9 @@ trainer = trainer_config(diffusion, dataset, renderer)
 utils.report_parameters(model)
 
 print('Testing forward...', end=' ', flush=True)
-#print("shape data set", dataset[0].shape)
+#print("shape data set", dataset[0]['actions'].shape, dataset[0]['states'].shape)
 batch = utils.batchify(dataset[0])
-#print("batch observation", batch)
+#print("batch observation", batch[0].shape, batch[1].shape)
 loss, _ = diffusion.loss(*batch)
 loss.backward()
 print('✓')
