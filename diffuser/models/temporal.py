@@ -89,7 +89,7 @@ class ResnetEncoder(nn.Module):
 class ResnetEncoderFinetuned(nn.Module):
     def __init__(self, obs_encoder_dim=50):
         super().__init__()
-        self.resnet = timm.create_model('resnet18', pretrained=True, num_classes=0)
+        self.resnet = timm.create_model('resnet18', pretrained=False, num_classes=0)
         num_ftrs = 512 # nb_features resnet
         self.fc1 = nn.Linear(num_ftrs, obs_encoder_dim)
 
@@ -137,7 +137,7 @@ class TemporalUnet(nn.Module):
               except:
                 print(f'[Unalbe to load a finetuned resnet from : {path_pretrained_encoder} -> Using the default pretrained resnet from timm library]\n')
                 self.resnet_encoder = ResnetEncoder(obs_embed_dim)
-                #self.resnet_encoder.requires_grad_(False)
+                self.resnet_encoder.resnet.requires_grad_(False)
                 for param in self.resnet_encoder.resnet.parameters():
                   param.requires_grad = False
 

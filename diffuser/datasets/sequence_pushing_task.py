@@ -14,7 +14,6 @@ import os
 
 Batch = namedtuple('Batch', 'trajectories conditions')
 
-
 transform_img = transforms.Compose([transforms.ToTensor(),
                                     transforms.Resize((224, 224)),
                                     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -43,6 +42,7 @@ class SequenceDatasetPush(torch.utils.data.Dataset):
         self.max_path_length = max_path_length
         self.use_padding = use_padding
         self.data_dir = data_dir
+        self.nb_loaded = 0
 
         entries = os.listdir(data_dir)
         random.shuffle(entries)
@@ -63,7 +63,7 @@ class SequenceDatasetPush(torch.utils.data.Dataset):
             else: # obs_type='pixel': the observation are raw pixel images
                 self.observation_dim = dataset_file['observations'].shape #fields.observations.shape[-1]
             self.action_dim = dataset_file['actions'][0].shape[0]
-       
+  
     def process_img(self, img):
         return transform_img(img).numpy()
 
@@ -79,10 +79,10 @@ class SequenceDatasetPush(torch.utils.data.Dataset):
             self.fields[f'normed_{key}'] = normed.reshape(self.n_episodes, self.max_path_length, -1)
 
     def normalize_actions(self, actions, path_start, path_end):
-        mean_actions = np.mean(actions)
-        std_actions = np.std(actions)
-        eps=1e-10
-        return (actions[path_start:path_end]-mean_actions)/(eps+std_actions)
+        mean_actions = 0.0 #np.mean(actions)
+        std_actions = 0.015 #np.std(actions)
+        #eps=1e-10
+        return (actions[path_start:path_end]-mean_actions)/(std_actions)
 
     def get_conditions(self, observations):
         '''
@@ -107,9 +107,10 @@ class SequenceDatasetPush(torch.utils.data.Dataset):
                 return self.safe_batch()
             path_start = np.random.randint(0, episode_length-self.horizon+1)
             path_end = path_start + self.horizon
-            actions = self.normalize_actions(dataset_file['actions'], path_start, path_end)
+            #actions = self.normalize_actions(dataset_file['actions'], path_start, path_end)
+            actions = dataset_file['actions'][path_start:path_end]/0.015
             if self.obs_type == 'state_features':
-                first_observation = dataset_file['observations_features']
+                first_observation = dataset_file['observations_features'][:]/0.01
             else: # obs_type='pixel': the observation are raw pixel images
                 first_observation = self.process_img(np.array(dataset_file["observations"]))
 

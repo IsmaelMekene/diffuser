@@ -85,6 +85,7 @@ class Trainer(object):
 
         self.reset_parameters()
         self.step = 0
+        self.loss_evolution = []
 
     def reset_parameters(self):
         self.ema_model.load_state_dict(self.model.state_dict())
@@ -110,6 +111,10 @@ class Trainer(object):
                 loss, infos = self.model.loss(*batch)
                 loss = loss / self.gradient_accumulate_every
                 loss.backward()
+                if self.step % 200 == 0:
+                  with open(self.logdir+'/loss_evolution_during_training.txt', 'a') as f:
+                    f.write(str(loss.cpu().data.numpy())+ "\n")
+                
 
             self.optimizer.step()
             self.optimizer.zero_grad()
@@ -125,6 +130,7 @@ class Trainer(object):
                 infos_str = ' | '.join([f'{key}: {val:8.4f}' for key, val in infos.items()])
                 print(f'{self.step}: {loss:8.4f} | {infos_str} | t: {timer():8.4f}', flush=True)
 
+            
             #if self.step == 0 and self.sample_freq:
             #    self.render_reference(self.n_reference)
 
@@ -200,8 +206,6 @@ class Trainer(object):
             ## get a single datapoint
             batch = self.dataloader_vis.__next__()
 
-            ## modified
-            
             conditions = to_device(batch.conditions, 'cuda:0')
 
             ## repeat each item in conditions `n_samples` times

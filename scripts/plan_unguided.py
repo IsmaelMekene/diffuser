@@ -1,8 +1,10 @@
 import pdb
-
+#
+import cv2
 import diffuser.sampling as sampling
 import diffuser.utils as utils
 import torch
+import torchvision.transforms as transforms
 import einops
 from diffuser.datasets.preprocessing import get_policy_preprocess_fn
 import numpy as np 
@@ -91,7 +93,8 @@ def default_sample_fn(model, x, cond, t):
     values = torch.zeros(len(x), device=x.device)
     return model_mean + model_std * noise, values
 
-diffusion.normalizer=dataset.normalizer
+if not 'push' in args.dataset.lower():
+  diffusion.normalizer=dataset.normalizer
 
 def format_conditions(conditions, batch_size):
   conditions = utils.apply_dict(
@@ -120,6 +123,17 @@ def de_normalize(x_in, data, key):
     means = data[key].mean(axis=0)
     stds = data[key].std(axis=0)
 
+
+transform_img = transforms.Compose([transforms.ToTensor(),
+                                    transforms.Resize((224, 224)),
+                                    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+                                ])
+
+
+
+def process_img(img):
+  return transform_img(img).numpy()
+
 def to_torch(x_in, dtype=None, device=None):
 	dtype = dtype or DTYPE
 	device = device or DEVICE
@@ -131,8 +145,19 @@ def to_torch(x_in, dtype=None, device=None):
 
 preprocess_fn = get_policy_preprocess_fn(args.preprocess_fns)
 ## end added
+
 env = dataset.env
 observation = env.reset()
+#print(observation)
+if 'push' in args.dataset.lower():
+  print('shape:', observation['rgb_top_camera'].shape)
+  observation = process_img(observation['rgb_top_camera'].copy())
+
+def normalize_actions(self, actions, path_start, path_end):
+  mean_actions =  -0.01#np.mean(actions)
+  std_actions = 0.01 #np.std(actions)
+  eps=1e-10
+  return (actions[path_start:path_end]-mean_actions)/(eps+std_actions)
 
 ## observations for rendering
 rollout = [observation.copy()]
@@ -140,17 +165,21 @@ rollout = [observation.copy()]
 total_reward = 0
 sum_std = 0
 mean_abs_action = 0
-for t in range(args.max_episode_length):
+
+#args.max_episode_length
+for t in range(100):
 
     if t % 10 == 0: print(args.savepath, flush=True)
 
     ## save state for rendering only
-    state = env.state_vector().copy()
+    if not 'push' in args.dataset.lower():
+      state = env.state_vector().copy()
 
     ## format current observation for conditioning
     #conditions = {0: observation}
     #conditions = {k: preprocess_fn(v) for k, v in conditions.items()}
-    observation = dataset.normalizer(observation, 'observations')
+    if not 'push' in args.dataset.lower():
+      observation = dataset.normalizer(observation, 'observations')
     observation = observation[None].repeat(args.batch_size, axis=0)
     conditions = utils.to_torch(observation, dtype=torch.float32, device='cuda:0')
     #conditions = {0: observation}
@@ -171,7 +200,7 @@ for t in range(args.max_episode_length):
 
 
     ## extract action [ batch_size x horizon x transition_dim ]
-    actions = dataset.normalizer.unnormalize(actions, 'actions')
+    #actions = dataset.normalizer.unnormalize(actions, 'actions')
 
     ## extract first action
     #a_ = actions
@@ -191,12 +220,20 @@ for t in range(args.max_episode_length):
 
     ## print reward and score
     total_reward += reward
-    score = env.get_normalized_score(total_reward)
-    print(
-        f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | '
-        f'values: {samples.values} | scale: {args.scale}',
-        flush=True,
-    )
+    if not 'push' in args.dataset.lower():
+      score = env.get_normalized_score(total_reward)
+      print(
+          f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | '
+          f'scale: {args.scale}',
+          flush=True,
+      )
+    else:
+      score = total_reward
+      print(
+          f't: {t} | r: {reward:.2f} |  R: {total_reward:.2f} | score: {score:.4f} | '
+          f'values: {samples.values} | scale: {args.scale}',
+          flush=True,
+      )
 
     ## update rollout observations
     #rollout.append(next_observation.copy())
@@ -208,7 +245,27 @@ for t in range(args.max_episode_length):
         break
 
     observation = next_observation
+    observation = process_img(observation['rgb_top_camera'].copy())
 
+# define a reward  if goal is not reached 1-distance_to_the_goal
+if total_reward==0:
+  print(f'Did not finish the task in the given max_episode_length:'
+   f'{args.max_episode_length}, computing the inverse of the distance to the goal\n')
+  dist_cubes_goals = 0.
+  for i in range(env.num_cubes):
+      d_goal_cube= np.inf
+      cube_qpos = env.scene.get_joint_qpos(env.cubes_name[i])
+      for goal_name in env.goals_name:
+          goal_qpos = env.scene.get_site_pos(goal_name)
+          dist_ = abs(goal_qpos[0] - cube_qpos[0])+abs(goal_qpos[1] - cube_qpos[1])
+          d_goal_cube = min(d_goal_cube, dist_)
+
+      dist_cubes_goals += d_goal_cube
+      print(f'Distance goal {i} with the closest cube: {d_goal_cube}\n')
+  total_reward = dist_cubes_goals/env.num_cubes
+  print(f'Inverse of the distance to the goals: {1/total_reward:.2f}', flush=True,)
+
+  
 with open('std_mean_actions.txt', 'a') as f:
   f.write("\n"+str(sum_std/args.max_episode_length)+ "\n")
   f.write(str(mean_abs_action/args.max_episode_length)+"\n")

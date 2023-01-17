@@ -78,7 +78,7 @@ trainer = diffusion_experiment.trainer
 
 for g in trainer.optimizer.param_groups:
   print('\nlr:', g['lr'], '\n')
-  g['lr'] = g['lr']/6
+  g['lr'] = g['lr']/1.5
 
 for g in trainer.optimizer.param_groups:
   print('\nlr:', g['lr'], '\n')

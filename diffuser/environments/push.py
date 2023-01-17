@@ -93,6 +93,11 @@ class PushEnv(BaseEnv):
 
         action = copy(action)
         linear_velocity = np.zeros(3)
+        if type(action) == np.ndarray:
+          linear_velocity[:2] = action
+          action = {"xy_linear_velocity":linear_velocity
+          }
+          return super().step(action)
         linear_velocity[:2] = action.pop("xy_linear_velocity")
         action["linear_velocity"] = linear_velocity
         return super().step(action)

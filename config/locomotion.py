@@ -16,6 +16,7 @@ args_to_watch = [
 ]
 
 logbase = 'logs'
+collected_data_dir = '/content/Drive/MyDrive/project_recvis_diffuser/diffuser_img/diffuser/collected_data_with_reward_img2'
 
 base = {
     'diffusion': {
@@ -31,7 +32,8 @@ base = {
         'dim_mults': (1, 2, 4, 8),
         'attention': False,
         'renderer': 'utils.MuJoCoRenderer',
-        'obs_type': 'state_features',
+        'path_pretrained_encoder': None,
+        "diffusion_type": "actions_only",
 
         ## dataset
         'loader': 'datasets.SequenceDataset',
@@ -40,6 +42,8 @@ base = {
         'clip_denoised': False,
         'use_padding': True,
         'max_path_length': 1000,
+        'obs_type': 'state_features',
+        'data_dir': "collected_data_dir",
 
         ## serialization
         'logbase': logbase,
@@ -120,6 +124,11 @@ base = {
         'device': 'cuda',
         'seed': None,
 
+        'obs_type': 'state_features',
+        'data_dir': "collected_data_dir",
+        'path_pretrained_encoder': None,
+        "diffusion_type": "actions_only",
+
         ## sample_kwargs
         'n_guide_steps': 2,
         'scale': 0.1,
@@ -153,13 +162,18 @@ base = {
     },
 
     'plan_unguided': {
-        #'guide': 'sampling.ValueGuide',
-        #'policy': 'sampling.GuidedPolicy',
+        'guide': 'sampling.ValueGuide',
+        'policy': 'sampling.GuidedPolicy',
         'max_episode_length': 1000,
         'batch_size': 64,
         'preprocess_fns': [],
         'device': 'cuda',
         'seed': None,
+        'obs_type': 'state_features',
+        'data_dir': "collected_data_dir",
+        'path_pretrained_encoder': None,
+        "diffusion_type": "actions_only",
+
 
         ## sample_kwargs
         'n_guide_steps': 2,
@@ -184,7 +198,7 @@ base = {
 
         ## loading
         'diffusion_loadpath': 'f:diffusion/defaults_H{horizon}_T{n_diffusion_steps}',
-        #'value_loadpath': 'f:values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
+        'value_loadpath': 'f:values/defaults_H{horizon}_T{n_diffusion_steps}_d{discount}',
 
         'diffusion_epoch': 'latest',
         #'value_epoch': 'latest',
