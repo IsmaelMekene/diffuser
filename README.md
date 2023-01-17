@@ -31,7 +31,7 @@ pip install -e .
 ```
 
 ## Using pretrained models
-We train (several versions)  Diffuser with the extensions described above in the mujoco in the mujoco environments *halfcheetah* and *walker-2d* (using the D4RL medium-expert dataset). One can download the pretrained weights from this drive [link](https://drive.google.com/drive/folders/11tfJ8XO1pYn3gEhs5Wg14M2i9k2VYw-m?usp=sharing)
+We train (several versions)  Diffuser with the extensions described above in the mujoco in the mujoco environments *halfcheetah* and *walker-2d* (using the D4RL medium-expert dataset). One can download the pretrained weights from this drive [link](https://drive.google.com/drive/folders/15AaV9x3UtIQr6ARMga4DbJdW5GQLd-Vy?usp=sharing)
 
 ### Downloading weights from the original paper
 
