@@ -1,10 +1,9 @@
 # Planning with Diffusion &nbsp;&nbsp; 
-This project is built on the top of the Diffuser [paper [1]](https://arxiv.org/abs/2205.09991) and its [code](https://github.com/jannerm/diffuser/tree/main).
+This project is built on top of the [Diffuser paper](https://arxiv.org/abs/2205.09991) and its [code](https://github.com/jannerm/diffuser/tree/main).
 
-The original [Diffuser](https://diffusion-planning.github.io/) model developped by generates trajectories by iteratively denoising randomly sampled plans. The Diffusion is performed on the sequences of states-actions pairs $[s_t,a_t,...,s_T,a_T]$ (*T* denotes the horizon)
+The original [Diffuser](https://diffusion-planning.github.io/) model generates trajectories by iteratively denoising randomly sampled plans. The Diffusion is performed on the sequences of states-actions pairs $[s_t,a_t,...,s_T,a_T]$ (*T* denotes the horizon)
 
-Our first extension is to reduce training and inference time by adapting the model such that  diffusion is only performed on the sequence of future actions $[a_t,...,a_T]$ (to enable the model to handle efficently *image based observations*, and not only state-vector observations). Crucially, the current state s_t is given to the model as input, like in conditional diffusion, but diffusion is only performed on the sequences of action. Thus, the new input is [a_t,...,a_T,s_t] instead of [a_t,...,a_T,s_t]. (expand to see more details)
-
+Our first extension is to reduce training and inference time by adapting the model such that  diffusion is performed only on the sequence of future actions $[a_t,...,a_T]$ and only the current state $s_t$ is used to *condition the diffusion process* (to enable the model to handle efficently *image based observations*, and not only state-vector observations) Thus, the new input is [a_t,...,a_T,s_t] instead of [a_t,...,a_T,s_t].
 
 
 ## Quickstart
@@ -31,7 +30,14 @@ pip install -e .
 ```
 
 ## Using pretrained models
-We train (several versions)  Diffuser with the extensions described above in the mujoco in the mujoco environments *halfcheetah* and *walker-2d* (using the D4RL medium-expert dataset). One can download the pretrained weights from this drive [link](https://drive.google.com/drive/folders/15AaV9x3UtIQr6ARMga4DbJdW5GQLd-Vy?usp=sharing)
+We train  Diffuser with the extensions described above in the mujoco environments *halfcheetah* and *walker-2d* (using the D4RL medium-expert [dataset](https://github.com/conglu1997/v-d4rl/tree/main/drqbc)). One can download the pretrained weights from this drive [link](https://drive.google.com/drive/folders/15AaV9x3UtIQr6ARMga4DbJdW5GQLd-Vy?usp=sharing). 
+
+We tested two configurations:
+* One in which we concatenate directly the current state $s_t$ to each of latent vector of actions $a_t^i,..., a_T^N$, where $i =0,...,N$ indicates the diffusion step (Note: for i=0 $[a_t^i,..., a_T^N]$ corresponds to a noiseless consecutive sequence of actions from the dataset, which is not stricly a latent vector but an observed vector variable ).
+
+* A second configuration in which we embed $x$ with a small Multi-Layer Perceptron (MLP) $e_{\phi}$, then we concatenate $e\phi}_{\phi}(x)$ and $[a_t^i,.., a_T^N]$ for  as before.
+
+For each of these two configurations (*raw state* and *state embedding*), we train Diffuser in the Halfcheetah and walker2d environments for *600 000 steps*. The pretrained weights can be found in the [drive](https://drive.google.com/drive/folders/15AaV9x3UtIQr6ARMga4DbJdW5GQLd-Vy?usp=sharing) as well.  
 
 ### Downloading weights from the original paper
 
