@@ -35,7 +35,7 @@ We train  Diffuser with the extensions described above in the mujoco environment
 We tested two configurations:
 * One in which we concatenate directly the current state $s_t$ to each of latent vector of actions $a_t^i,..., a_T^N$, where $i =0,...,N$ indicates the diffusion step (Note: for i=0 $[a_t^i,..., a_T^N]$ corresponds to a noiseless consecutive sequence of actions from the dataset, which is not stricly a latent vector but an observed vector variable ).
 
-* A second configuration in which we embed $x$ with a small Multi-Layer Perceptron (MLP) $e_{\phi}$, then we concatenate $e\phi}_{\phi}(x)$ and $[a_t^i,.., a_T^N]$ for  as before.
+* A second configuration in which we embed $x$ with a small Multi-Layer Perceptron (MLP) $e_{\phi}$, then we concatenate $e_{\phi}(x)$ and $[a_t^i,.., a_T^N]$ for  as before.
 
 For each of these two configurations (*raw state* and *state embedding*), we train Diffuser in the Halfcheetah and walker2d environments for *600 000 steps*. The pretrained weights can be found in the [drive](https://drive.google.com/drive/folders/15AaV9x3UtIQr6ARMga4DbJdW5GQLd-Vy?usp=sharing) as well.  
 
