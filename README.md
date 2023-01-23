@@ -3,7 +3,7 @@ This project is built on top of the [Diffuser paper](https://arxiv.org/abs/2205.
 
 The original [Diffuser](https://diffusion-planning.github.io/) model generates trajectories by iteratively denoising randomly sampled plans. The Diffusion is performed on the sequences of states-actions pairs $[s_t,a_t,...,s_T,a_T]$ (*T* denotes the horizon)
 
-Our first extension is to reduce training and inference time by adapting the model such that  diffusion is performed only on the sequence of future actions $[a_t,...,a_T]$ and only the current state $s_t$ is used to *condition the diffusion process* (to enable the model to handle efficently *image based observations*, and not only state-vector observations) Thus, the new input is [a_t,...,a_T,s_t] instead of [a_t,...,a_T,s_t].
+Our first extension is to reduce training and inference time by adapting the model such that  diffusion is performed only on the sequence of future actions $[a_t,...,a_T]$ and only the current state $s_t$ is used to *condition the diffusion process* (to enable the model to handle efficently *image based observations*, and not only state-vector observations) Thus, the new input is $[a_t,...,a_T,s_t]$ instead of $[a_t,...,a_T,s_t]$.
 
 
 ## Quickstart
